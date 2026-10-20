@@ -2,6 +2,8 @@
 
 A mod for Claude Code that shows, in a side panel, where **each chat** stands: what has to be done, what depends on you, and what was decided. No more scrolling the conversation to find out what is left.
 
+![The chat-checklist panel beside a Claude Code session](docs/screenshot.png)
+
 ## What the panel shows
 
 - **Pending**: what only you can do or decide. A ✕ next to each item dismisses it. Resolved items stay collapsed in a single line ("▸ 4 resolved") that you click to see which ones they were.
