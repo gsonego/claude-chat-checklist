@@ -7,18 +7,41 @@ import type {
   ChecklistItem,
   ChecklistStatus,
   DecisionItem,
+  Labels,
   Prefs,
 } from '../types'
 
 const PANE = 'chat-checklist'
-const TOOL = 'mcp__chat-checklist__painel'
+const TOOL = 'mcp__chat-checklist__panel'
 const MAX_CHATS = 60
 const MAX_ROWS = 100
+
+/** The interface texts. English by default; the model passes a translation for the chat's language. */
+const DEFAULT_LABELS: Labels = {
+  title: 'Checklist',
+  pending: 'PENDING',
+  noPending: 'No open items.',
+  resolved: '{n} resolved',
+  checklist: 'CHECKLIST',
+  empty: 'Nothing here yet.',
+  decisions: 'DECISIONS',
+  noDecisions: 'None recorded.',
+  alertsOn: 'Alerts: on',
+  alertsOff: 'Alerts: off',
+  decisionsShown: 'Decisions: shown',
+  decisionsHidden: 'Decisions: hidden',
+  newPending: 'New pending item: {text}',
+  opened: 'Panel opened.',
+  closed: 'Panel closed.',
+}
+
+const LABEL_KEYS = Object.keys(DEFAULT_LABELS) as (keyof Labels)[]
 
 const chatId = atom({ plugin: 'chat-checklist', key: 'chatId' } as const, '')
 const items = atom({ plugin: 'chat-checklist', key: 'items' } as const, [])
 const attention = atom({ plugin: 'chat-checklist', key: 'attention' } as const, [])
 const decisions = atom({ plugin: 'chat-checklist', key: 'decisions' } as const, [])
+const labels = atom({ plugin: 'chat-checklist', key: 'labels' } as const, DEFAULT_LABELS)
 const isDismissed = atom({ plugin: 'chat-checklist', key: 'isDismissed' } as const, false)
 const isAlertOn = atom({ plugin: 'chat-checklist', key: 'isAlertOn' } as const, true)
 const isShowingResolved = atom(
@@ -36,9 +59,11 @@ const INSTRUCTIONS = `A side panel beside the conversation shows the user a live
 - checklist: the steps of what is being done in this chat. Short items (under 80 characters), in the language the user writes in, with a stable id of your choosing. Set a step to "doing" when you start it and to "done" as soon as it is finished. Add steps as they are discovered.
 - attention: only what requires the user (approve, answer, provide something, run or check something themselves). Set resolved: true once it no longer needs them. These raise an alert, so keep it for things that really block or need a human.
 - decisions: one line per choice the user and you settled on, so it is not lost in the scroll.
+- labels: the panel's interface texts (section titles, buttons, messages) are English by default. In a chat that is not in English, pass "labels" translated into the user's language on your first call, and again if the language changes. Keep them short, keep the section titles in UPPERCASE, and keep the {n} and {text} placeholders.
 - The panel is the place for this state: do not repeat the whole checklist in your replies, do not mention the tool, and make the call alongside your other work rather than narrating it.`
 
-type PainelInput = {
+type PanelInput = {
+  labels?: unknown
   checklist?: { id?: unknown; text?: unknown; status?: unknown }[]
   attention?: { id?: unknown; text?: unknown; resolved?: unknown }[]
   decisions?: { id?: unknown; text?: unknown }[]
@@ -96,6 +121,7 @@ async function save($: EngineInterface) {
     attention: await read($, attention),
     decisions: await read($, decisions),
     isDismissed: await read($, isDismissed),
+    labels: await read($, labels),
     updatedAt: await $.clock.now(),
   }
 
@@ -115,7 +141,7 @@ async function openIfWanted($: EngineInterface) {
   const hasRows = (await read($, items)).length + (await read($, attention)).length > 0
 
   if (hasRows && !(await read($, isDismissed))) {
-    await $.ui.open({ id: PANE, title: 'Checklist' })
+    await $.ui.open({ id: PANE, title: (await read($, labels)).title })
   }
 }
 
@@ -134,6 +160,7 @@ async function ensureChat($: EngineInterface) {
   await update($, attention, () => snapshot?.attention ?? [])
   await update($, decisions, () => snapshot?.decisions ?? [])
   await update($, isDismissed, () => snapshot?.isDismissed ?? false)
+  await update($, labels, () => ({ ...DEFAULT_LABELS, ...snapshot?.labels }))
   await openIfWanted($)
 }
 
@@ -167,10 +194,10 @@ export const register: Register = on => {
 
     await $.command.register({
       name: 'checklist',
-      description: 'Abre ou fecha o painel de checklist deste chat',
+      description: "Opens or closes this chat's checklist panel",
     })
     await $.tool.register({
-      name: 'painel',
+      name: 'panel',
       description:
         "Updates the side panel that shows the user this chat's checklist, what needs the user, and decisions made. Upserts entries by id; call it as the work progresses.",
       isDeferred: false,
@@ -212,6 +239,17 @@ export const register: Register = on => {
               required: ['id', 'text'],
             },
           },
+          labels: {
+            type: 'object',
+            description:
+              "Interface texts in the user's language (omit while the chat is in English). Keep {n} and {text}.",
+            properties: Object.fromEntries(
+              LABEL_KEYS.map(key => [
+                key,
+                { type: 'string', description: `English: ${DEFAULT_LABELS[key]}` },
+              ]),
+            ),
+          },
           remove: {
             type: 'array',
             items: { type: 'string' },
@@ -238,6 +276,7 @@ export const register: Register = on => {
       await update($, attention, () => [])
       await update($, decisions, () => [])
       await update($, isDismissed, () => false)
+      await update($, labels, () => DEFAULT_LABELS)
     }
 
     return next(e)
@@ -265,13 +304,28 @@ export const register: Register = on => {
   on('tool.call', { tool: TOOL }, async ($, e) => {
     await ensureChat($)
 
-    const input = e as unknown as PainelInput
+    const input = e as unknown as PanelInput
     const wasOpen = new Set(
       (await read($, attention)).filter(one => !one.isResolved).map(one => one.id),
     )
     const removed = new Set(
       Array.isArray(input.remove) ? input.remove.map(asId).filter(Boolean) : [],
     )
+
+    if (typeof input.labels === 'object' && input.labels !== null) {
+      const given = input.labels as Record<string, unknown>
+      const merged: Labels = { ...(await read($, labels)) }
+
+      for (const key of LABEL_KEYS) {
+        const text = asText(given[key])
+
+        if (text !== undefined) {
+          merged[key] = text.slice(0, 80)
+        }
+      }
+
+      await update($, labels, () => merged)
+    }
 
     if (input.reset === true) {
       await update($, items, () => [])
@@ -280,7 +334,7 @@ export const register: Register = on => {
     }
 
     await update($, items, list =>
-      upsert<ChecklistItem, NonNullable<PainelInput['checklist']>[number]>(
+      upsert<ChecklistItem, NonNullable<PanelInput['checklist']>[number]>(
         list,
         input.checklist,
         (one, id, old) => {
@@ -297,7 +351,7 @@ export const register: Register = on => {
       ).filter(one => !removed.has(one.id)),
     )
     await update($, attention, list =>
-      upsert<AttentionItem, NonNullable<PainelInput['attention']>[number]>(
+      upsert<AttentionItem, NonNullable<PanelInput['attention']>[number]>(
         list,
         input.attention,
         (one, id, old) => ({
@@ -308,7 +362,7 @@ export const register: Register = on => {
       ).filter(one => !removed.has(one.id)),
     )
     await update($, decisions, list =>
-      upsert<DecisionItem, NonNullable<PainelInput['decisions']>[number]>(
+      upsert<DecisionItem, NonNullable<PanelInput['decisions']>[number]>(
         list,
         input.decisions,
         (one, id, old) => ({ id, text: asText(one.text) ?? old?.text ?? id }),
@@ -324,13 +378,14 @@ export const register: Register = on => {
     await openIfWanted($)
 
     if (fresh.length > 0 && (await read($, isAlertOn))) {
-      const text = `Nova pendência: ${fresh[0].text}`
+      const L = await read($, labels)
+      const text = L.newPending.replace('{text}', fresh[0].text)
       $.ui.toast(text)
-      void $.ui.notify(text, { title: 'Checklist' }).catch(() => undefined)
+      void $.ui.notify(text, { title: L.title }).catch(() => undefined)
     }
 
     const done = nowItems.filter(one => one.status === 'done').length
-    const summary = `Painel atualizado: ${done}/${nowItems.length} concluídos, ${open.length} pendência(s) do usuário.`
+    const summary = `Panel updated: ${done}/${nowItems.length} done, ${open.length} pending for the user.`
 
     return { result: summary }
   })
@@ -341,16 +396,17 @@ export const register: Register = on => {
     if (await read($, isDismissed)) {
       await update($, isDismissed, () => false)
       await save($)
-      await $.ui.open({ id: PANE, title: 'Checklist' })
+      const L = await read($, labels)
+      await $.ui.open({ id: PANE, title: L.title })
 
-      return { text: 'Painel aberto.' }
+      return { text: L.opened }
     }
 
     await update($, isDismissed, () => true)
     await save($)
     await $.ui.close({ id: PANE })
 
-    return { text: 'Painel fechado.' }
+    return { text: (await read($, labels)).closed }
   })
 
   on('ui.close', async ($, e, next) => {
@@ -364,6 +420,7 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Button, Text } = $.ui.resolve(e)
+    const L = await read($, labels)
     const list = await read($, items)
     const asks = await read($, attention)
     const log = await read($, decisions)
@@ -386,9 +443,9 @@ export const register: Register = on => {
             paddingX={1}
           >
             <Text bold color={open.length > 0 ? 'yellow' : undefined} dimColor={open.length === 0}>
-              {open.length > 0 ? '⚠ ' : ''}PENDÊNCIAS · {open.length}
+              {open.length > 0 ? '⚠ ' : ''}{L.pending} · {open.length}
             </Text>
-            {open.length === 0 && <Text dimColor>Nenhuma pendência aberta.</Text>}
+            {open.length === 0 && <Text dimColor>{L.noPending}</Text>}
             {open.map(one => (
               <Box flexDirection="row" gap={1}>
                 <Text bold color="yellow">
@@ -417,7 +474,7 @@ export const register: Register = on => {
                   key="resolved"
                   plain
                   dimColor
-                  label={`${showResolved ? '▾' : '▸'} ${resolved.length} pendência(s) resolvida(s)`}
+                  label={`${showResolved ? '▾' : '▸'} ${L.resolved.replace('{n}', String(resolved.length))}`}
                   onPress={() => update($, isShowingResolved, isOn => !isOn)}
                 />
                 {showResolved &&
@@ -438,7 +495,7 @@ export const register: Register = on => {
 
         <Box flexDirection="column" borderStyle="round" paddingX={1}>
           <Box flexDirection="row" justifyContent="space-between">
-            <Text bold>CHECKLIST</Text>
+            <Text bold>{L.checklist}</Text>
             {list.length > 0 && (
               <Text>
                 <Text color="green">{'█'.repeat(filled)}</Text>
@@ -446,7 +503,7 @@ export const register: Register = on => {
               </Text>
             )}
           </Box>
-          {list.length === 0 && <Text dimColor>Nada por aqui ainda.</Text>}
+          {list.length === 0 && <Text dimColor>{L.empty}</Text>}
           {list.map(one => (
             <Box flexDirection="row" gap={1}>
               <Text
@@ -474,9 +531,9 @@ export const register: Register = on => {
         {showDecisions && (
           <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
             <Text bold dimColor>
-              DECISÕES · {log.length}
+              {L.decisions} · {log.length}
             </Text>
-            {log.length === 0 && <Text dimColor>Nenhuma registrada.</Text>}
+            {log.length === 0 && <Text dimColor>{L.noDecisions}</Text>}
             {log.map(one => (
               <Box flexDirection="row" gap={1}>
                 <Text dimColor>•</Text>
@@ -493,7 +550,7 @@ export const register: Register = on => {
             key="alert"
             plain
             dimColor
-            label={alertOn ? '🔔 Avisos: ligados' : '🔕 Avisos: desligados'}
+            label={alertOn ? '🔔 ' + L.alertsOn : '🔕 ' + L.alertsOff}
             onPress={async () => {
               await update($, isAlertOn, isOn => !isOn)
               await savePrefs($)
@@ -503,7 +560,7 @@ export const register: Register = on => {
             key="decisions"
             plain
             dimColor
-            label={showDecisions ? 'Decisões: visíveis' : 'Decisões: ocultas'}
+            label={showDecisions ? L.decisionsShown : L.decisionsHidden}
             onPress={async () => {
               await update($, isShowingDecisions, isOn => !isOn)
               await savePrefs($)

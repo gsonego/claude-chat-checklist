@@ -1,7 +1,7 @@
 {
   "name": "chat-checklist",
   "version": "0.1.0",
-  "description": "Painel lateral por chat: checklist do que está sendo feito, pendências que precisam de você e decisões tomadas.",
+  "description": "Per-chat side panel: a checklist of what is being done, pending items that need you, and decisions made.",
   "author": { "name": "gsonego" },
   "license": "MIT",
   "repository": "https://github.com/gsonego/claude-chat-checklist",

@@ -4,12 +4,32 @@ export type ChecklistItem = { id: string; text: string; status: ChecklistStatus 
 export type AttentionItem = { id: string; text: string; isResolved: boolean }
 export type DecisionItem = { id: string; text: string }
 
+/** The interface texts of the panel; {n} and {text} are placeholders. */
+export type Labels = {
+  title: string
+  pending: string
+  noPending: string
+  resolved: string
+  checklist: string
+  empty: string
+  decisions: string
+  noDecisions: string
+  alertsOn: string
+  alertsOff: string
+  decisionsShown: string
+  decisionsHidden: string
+  newPending: string
+  opened: string
+  closed: string
+}
+
 /** What is kept on disk for one chat, under `chat:<session id>`. */
 export type ChatSnapshot = {
   items: ChecklistItem[]
   attention: AttentionItem[]
   decisions: DecisionItem[]
   isDismissed: boolean
+  labels?: Labels
   updatedAt: number
 }
 
@@ -27,6 +47,7 @@ declare module 'claude-code' {
       isAlertOn: boolean
       isShowingDecisions: boolean
       isShowingResolved: boolean
+      labels: Labels
     }
   }
 }

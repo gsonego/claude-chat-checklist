@@ -1,54 +1,58 @@
 # chat-checklist
 
-Um mod para o Claude Code que mostra, num painel lateral, o estado do que está sendo feito **em cada chat**: o que é preciso fazer, o que depende de você e o que ficou decidido. Assim você não precisa rolar a conversa para descobrir o que falta.
+A mod for Claude Code that shows, in a side panel, where **each chat** stands: what has to be done, what depends on you, and what was decided. No more scrolling the conversation to find out what is left.
 
-## O que o painel mostra
+## What the panel shows
 
-- **Pendências**: o que só você pode fazer ou decidir. Um ✕ ao lado de cada item permite baixar a pendência. As resolvidas ficam recolhidas numa linha ("▸ 4 pendência(s) resolvida(s)") que você clica para ver quais foram.
-- **Checklist**: os passos do trabalho, com barra de progresso. Feito (✓), em andamento (▶) e a fazer (○).
-- **Decisões**: o que foi combinado no chat. Fica oculta por padrão; o botão "Decisões" a mostra.
+- **Pending**: what only you can do or decide. A ✕ next to each item dismisses it. Resolved items stay collapsed in a single line ("▸ 4 resolved") that you click to see which ones they were.
+- **Checklist**: the steps of the work, with a progress bar. Done (✓), in progress (▶) and to do (○).
+- **Decisions**: what was agreed in the chat. Hidden by default; the "Decisions" button shows it.
 
-Cada chat tem a sua própria lista, sem misturar com outros chats do mesmo projeto, e a lista volta quando você retoma o chat. O Claude mantém a lista por uma ferramenta própria do mod, conforme o trabalho avança; o painel é só de leitura (exceto o ✕).
+Every chat has its own list, never mixed with other chats of the same project, and the list comes back when you resume the chat. Claude keeps the list up to date through a tool the mod provides as the work moves forward; the panel is read-only (except for the ✕).
 
-Quando surge uma pendência nova, o mod mostra um toast e uma notificação. O botão "Avisos" no painel liga e desliga isso.
+When a new pending item shows up, the mod raises a toast and a notification. The "Alerts" button in the panel turns that on and off.
 
-## Instalação
+### Language
 
-No terminal, dentro do Claude Code:
+The repository and the defaults are in English, but the panel speaks the language of the chat: Claude is instructed to pass a translation of the interface texts (section titles, buttons, messages) the first time it uses the panel in a chat that is not in English, and the translation is stored with that chat. Items, pending entries and decisions are written by Claude in the language you write in.
+
+## Install
+
+In the terminal, inside Claude Code:
 
 ```
 /plugin install chat-checklist --marketplace gsonego/claude-chat-checklist
 ```
 
-De um shell:
+From a shell:
 
 ```
 claude plugin install chat-checklist --marketplace gsonego/claude-chat-checklist
 ```
 
-No app desktop, onde `/plugin` não roda: clique em **+** ao lado do campo de digitação, depois **Plugins**, **Add marketplace** com `gsonego/claude-chat-checklist` e **Add plugin**.
+In the desktop app, where `/plugin` does not run: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `gsonego/claude-chat-checklist`, then **Add plugin**.
 
-## Uso
+## Usage
 
-- O painel abre sozinho quando o primeiro item aparece num chat.
-- `/checklist` abre e fecha o painel. Se você o fechar, ele não reabre sozinho naquele chat.
-- Não é preciso pedir nada: o Claude passa a manter o painel quando o trabalho tem mais de um passo.
+- The panel opens by itself when the first item appears in a chat.
+- `/checklist` opens and closes the panel. If you close it, it does not reopen by itself in that chat.
+- You do not have to ask for anything: Claude starts maintaining the panel when the work has more than one step.
 
-## Limites
+## Limits
 
-- Testado no app desktop. No terminal o painel usa os mesmos elementos, mas não foi testado lá; em telas estreitas ele só abre com `/checklist`.
-- Não toca som: o motor não tem player de áudio no Windows. Toast e notificação funcionam.
-- A lista só existe se o Claude usar a ferramenta do mod. Ela é incentivada por uma instrução adicionada ao prompt do sistema, que não roda em instalações sob gestão de uma organização.
+- Tested in the desktop app. In the terminal the panel uses the same elements but has not been tested there; on narrow screens it only opens with `/checklist`.
+- It does not play a sound: the engine has no audio player on Windows. Toast and notification work.
+- The list only exists if Claude uses the mod's tool. It is encouraged by an instruction added to the system prompt, which does not run in installs under an organization's managed settings.
 
-## Desenvolvimento
+## Development
 
 ```
 claude plugin validate .
 claude plugin test .
 ```
 
-O código está em `hooks/register.tsx`, o contrato do estado em `types/index.d.ts`. A API de mods do Claude Code ainda é de acesso antecipado e pode mudar entre versões.
+The code is in `hooks/register.tsx` and the state contract in `types/index.d.ts`. The Claude Code mod API is early access and may change between releases.
 
-## Licença
+## License
 
 MIT

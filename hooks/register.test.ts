@@ -1,8 +1,8 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-const TOOL = 'mcp__chat-checklist__painel'
+const TOOL = 'mcp__chat-checklist__panel'
 
-type Snap = { items: unknown[]; attention: unknown[] }
+type Snap = { items: unknown[]; attention: unknown[]; labels?: { pending: string } }
 
 test('keeps the checklist per chat, upserts by id and alerts on a new pendency', async ($, on) => {
   let chat = 'chat-a'
@@ -38,6 +38,7 @@ test('keeps the checklist per chat, upserts by id and alerts on a new pendency',
       { id: 'b', text: 'Test it' },
     ],
     attention: [{ id: 'q', text: 'Answer the question' }],
+    labels: { pending: 'PENDÊNCIAS', newPending: 'Nova pendência: {text}' },
   })
   await $.tool.call({ tool: TOOL, checklist: [{ id: 'a', status: 'done' }] })
 
@@ -45,13 +46,15 @@ test('keeps the checklist per chat, upserts by id and alerts on a new pendency',
     { id: 'a', text: 'Write the mod', status: 'done' },
     { id: 'b', text: 'Test it', status: 'todo' },
   ])
-  expect(toasts.length).toBe(1)
+  expect(toasts).toEqual(['Nova pendência: Answer the question'])
+  expect((disk['chat:chat-a'] as Snap).labels?.pending).toBe('PENDÊNCIAS')
 
   // Another chat starts from nothing: lists never mix.
   chat = 'chat-b'
   await $.tool.call({ tool: TOOL, checklist: [{ id: 'x', text: 'Other chat' }] })
   expect((disk["chat:" + 'chat-b'] as Snap).items).toEqual([{ id: 'x', text: 'Other chat', status: 'todo' }])
   expect((disk["chat:" + 'chat-b'] as Snap).attention).toEqual([])
+  expect((disk['chat:chat-b'] as Snap).labels?.pending).toBe('PENDING')
 
   // Coming back to the first chat brings its list back.
   chat = 'chat-a'
