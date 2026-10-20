@@ -59,6 +59,17 @@ const isShowingDecisions = atom(
   false,
 )
 
+// The tool description reaches the model even where the system prompt section does not
+// (prompt.compose hooks do not run in installs under an organization's managed settings).
+const TOOL_DESCRIPTION =
+  "Keeps the side panel up to date: the user sees this chat's checklist, the pending items that need them, and the decisions made. " +
+  'USE IT PROACTIVELY whenever the work has more than one step, leaves anything open or needs something from the user (skip it for a trivial one-step request). ' +
+  'Put the steps in "checklist" (status todo/doing/done: set "doing" when you start a step and "done" as soon as it is finished), ' +
+  'what only the user can do or decide in "attention" (resolved: true once it no longer needs them; a new one raises an alert), ' +
+  'and the choices settled in this chat in "decisions". Upserts by id; keep items short, in the language the user writes in. ' +
+  'In a chat that is not in English, pass "labels" translated into the user\'s language on your first call. ' +
+  'Do not repeat the checklist in your replies and do not mention this tool.'
+
 const INSTRUCTIONS = `A side panel beside the conversation shows the user a live, per-chat summary of this chat: a checklist, the things only the user can do or decide, and the decisions made. Keep it current with the ${TOOL} tool.
 
 - Use it whenever the work has more than one step, leaves anything open, or needs something from the user. Skip it for a trivial one-step request.
@@ -228,7 +239,7 @@ export const register: Register = on => {
     await $.tool.register({
       name: 'panel',
       description:
-        "Updates the side panel that shows the user this chat's checklist, what needs the user, and decisions made. Upserts entries by id; call it as the work progresses.",
+        TOOL_DESCRIPTION,
       isDeferred: false,
       inputSchema: {
         type: 'object',
