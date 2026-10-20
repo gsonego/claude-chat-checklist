@@ -471,7 +471,7 @@ export const register: Register = on => {
     const label = current === undefined ? undefined : current.text.length > 60 ? current.text.slice(0, 59) + '…' : current.text
 
     return (
-      <Box flexDirection="row" gap={1}>
+      <Box flexDirection="row" gap={1} marginTop={e.surface === 'terminal' ? 1 : 0}>
         {label !== undefined && (
           <Text bold color="cyan">
             ▶ {label}
@@ -485,7 +485,7 @@ export const register: Register = on => {
         )}
         {open.length > 0 && (
           <Text bold color="yellow">
-            · ⚠ {L.pending.toLowerCase()}: {open.length}
+            · ● {L.pending.toLowerCase()}: {open.length}
           </Text>
         )}
         <Button
@@ -529,7 +529,11 @@ export const register: Register = on => {
       <Box flexDirection="column" gap={1} padding={1}>
         {asks.length > 0 && (
           <Box flexDirection="column" borderStyle="round" borderDimColor={open.length === 0} paddingX={1}>
-            <Box flexDirection="row" justifyContent="space-between">
+            <Box
+              flexDirection="row"
+              justifyContent="space-between"
+              marginBottom={open.length > 0 || showResolved ? 1 : 0}
+            >
               {open.length > 0 ? (
                 <Text bold color="yellow">
                   {L.pending} · {open.length}
@@ -589,7 +593,7 @@ export const register: Register = on => {
         )}
 
         <Box flexDirection="column" borderStyle="round" paddingX={1}>
-          <Box flexDirection="row" justifyContent="space-between">
+          <Box flexDirection="row" justifyContent="space-between" marginBottom={1}>
             <Text bold>{L.checklist}</Text>
             {list.length > 0 && (
               <Text dimColor>
@@ -639,9 +643,11 @@ export const register: Register = on => {
 
         {showDecisions && (
           <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
-            <Text bold dimColor>
-              {L.decisions} · {log.length}
-            </Text>
+            <Box marginBottom={1}>
+              <Text bold dimColor>
+                {L.decisions} · {log.length}
+              </Text>
+            </Box>
             {log.length === 0 && <Text dimColor>{L.noDecisions}</Text>}
             {shownDecisions.map(one => (
               <Box flexDirection="row" gap={1}>
@@ -664,40 +670,57 @@ export const register: Register = on => {
         )}
 
         <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
-          <Text bold dimColor>
-            {L.settings}
-          </Text>
+          <Box marginBottom={1}>
+            <Text bold dimColor>
+              {L.settings}
+            </Text>
+          </Box>
           <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
-            <Button
-              key="alert"
-              plain
-              dimColor
-              label={(alertOn ? '☑ ' : '☐ ') + L.alerts}
-              onPress={async () => {
-                await update($, isAlertOn, isOn => !isOn)
-                await savePrefs($)
-              }}
-            />
-            <Button
-              key="decisions"
-              plain
-              dimColor
-              label={(showDecisions ? '☑ ' : '☐ ') + L.showDecisions}
-              onPress={async () => {
-                await update($, isShowingDecisions, isOn => !isOn)
-                await savePrefs($)
-              }}
-            />
-            <Button
-              key="band"
-              plain
-              dimColor
-              label={(bandIsOn ? '☑ ' : '☐ ') + L.band}
-              onPress={async () => {
-                await update($, isBandOn, isOn => !isOn)
-                await savePrefs($)
-              }}
-            />
+            <Box flexDirection="row" gap={1}>
+              <Text bold={alertOn} color={alertOn ? 'green' : undefined} dimColor={!alertOn}>
+                {alertOn ? '✓' : '○'}
+              </Text>
+              <Button
+                key="alert"
+                plain
+                dimColor={!alertOn}
+                label={L.alerts}
+                onPress={async () => {
+                  await update($, isAlertOn, isOn => !isOn)
+                  await savePrefs($)
+                }}
+              />
+            </Box>
+            <Box flexDirection="row" gap={1}>
+              <Text bold={showDecisions} color={showDecisions ? 'green' : undefined} dimColor={!showDecisions}>
+                {showDecisions ? '✓' : '○'}
+              </Text>
+              <Button
+                key="decisions"
+                plain
+                dimColor={!showDecisions}
+                label={L.showDecisions}
+                onPress={async () => {
+                  await update($, isShowingDecisions, isOn => !isOn)
+                  await savePrefs($)
+                }}
+              />
+            </Box>
+            <Box flexDirection="row" gap={1}>
+              <Text bold={bandIsOn} color={bandIsOn ? 'green' : undefined} dimColor={!bandIsOn}>
+                {bandIsOn ? '✓' : '○'}
+              </Text>
+              <Button
+                key="band"
+                plain
+                dimColor={!bandIsOn}
+                label={L.band}
+                onPress={async () => {
+                  await update($, isBandOn, isOn => !isOn)
+                  await savePrefs($)
+                }}
+              />
+            </Box>
           </Box>
         </Box>
       </Box>

@@ -20,7 +20,7 @@ The repository and the defaults are in English, but the panel speaks the languag
 
 ### Band above the prompt
 
-A thin line above the prompt always shows the current step, the progress and the number of open pending items, for example `▶ Write the tests · 3/7 · ⚠ pending: 1`. The ⧉ button opens and closes the panel, and the "Band" button in the panel (or `/checklist band`) turns the band on and off.
+A thin line above the prompt always shows the current step, the progress and the number of open pending items, for example `▶ Write the tests · 3/7 · ● pending: 1`. The ⧉ button opens and closes the panel, and the "Band" button in the panel (or `/checklist band`) turns the band on and off.
 
 ## Install
 
