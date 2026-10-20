@@ -16,6 +16,10 @@ When a new pending item shows up, the mod raises a toast and a notification. The
 
 The repository and the defaults are in English, but the panel speaks the language of the chat: Claude is instructed to pass a translation of the interface texts (section titles, buttons, messages) the first time it uses the panel in a chat that is not in English, and the translation is stored with that chat. Items, pending entries and decisions are written by Claude in the language you write in.
 
+### Band above the prompt
+
+A thin line above the prompt always shows the current step, the progress and the number of open pending items, for example `▶ Write the tests · 3/7 · ⚠ pending: 1`. The ⧉ button opens and closes the panel, and the "Band" button in the panel (or `/checklist band`) turns the band on and off.
+
 ## Install
 
 In the terminal, inside Claude Code:
@@ -35,7 +39,7 @@ In the desktop app, where `/plugin` does not run: click **+** next to the prompt
 ## Usage
 
 - The panel opens by itself when the first item appears in a chat.
-- `/checklist` opens and closes the panel. If you close it, it does not reopen by itself in that chat.
+- `/checklist` opens and closes the panel. If you close it, it does not reopen by itself in that chat. `/checklist band` shows or hides the band above the prompt.
 - You do not have to ask for anything: Claude starts maintaining the panel when the work has more than one step.
 
 ## Limits

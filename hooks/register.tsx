@@ -33,6 +33,11 @@ const DEFAULT_LABELS: Labels = {
   newPending: 'New pending item: {text}',
   opened: 'Panel opened.',
   closed: 'Panel closed.',
+  bandOn: 'Band shown.',
+  bandOff: 'Band hidden.',
+  settings: 'SETTINGS',
+  bandButtonOn: 'Band: on',
+  bandButtonOff: 'Band: off',
 }
 
 const LABEL_KEYS = Object.keys(DEFAULT_LABELS) as (keyof Labels)[]
@@ -42,6 +47,7 @@ const items = atom({ plugin: 'chat-checklist', key: 'items' } as const, [])
 const attention = atom({ plugin: 'chat-checklist', key: 'attention' } as const, [])
 const decisions = atom({ plugin: 'chat-checklist', key: 'decisions' } as const, [])
 const labels = atom({ plugin: 'chat-checklist', key: 'labels' } as const, DEFAULT_LABELS)
+const isBandOn = atom({ plugin: 'chat-checklist', key: 'isBandOn' } as const, true)
 const isDismissed = atom({ plugin: 'chat-checklist', key: 'isDismissed' } as const, false)
 const isAlertOn = atom({ plugin: 'chat-checklist', key: 'isAlertOn' } as const, true)
 const isShowingResolved = atom(
@@ -132,6 +138,7 @@ async function savePrefs($: EngineInterface) {
   const prefs: Prefs = {
     isAlertOn: await read($, isAlertOn),
     isShowingDecisions: await read($, isShowingDecisions),
+    isBandOn: await read($, isBandOn),
   }
 
   await $.store.set('prefs', prefs)
@@ -164,6 +171,27 @@ async function ensureChat($: EngineInterface) {
   await openIfWanted($)
 }
 
+// Opens the panel if the person had closed it, closes it otherwise; answers the message to show.
+async function togglePanel($: EngineInterface): Promise<string> {
+  await ensureChat($)
+
+  const L = await read($, labels)
+
+  if (await read($, isDismissed)) {
+    await update($, isDismissed, () => false)
+    await save($)
+    await $.ui.open({ id: PANE, title: L.title })
+
+    return L.opened
+  }
+
+  await update($, isDismissed, () => true)
+  await save($)
+  await $.ui.close({ id: PANE })
+
+  return L.closed
+}
+
 async function prune($: EngineInterface) {
   const keys = (await $.store.keys()).filter(key => key.startsWith('chat:'))
 
@@ -191,6 +219,7 @@ export const register: Register = on => {
 
     await update($, isAlertOn, () => prefs?.isAlertOn ?? true)
     await update($, isShowingDecisions, () => prefs?.isShowingDecisions ?? false)
+    await update($, isBandOn, () => prefs?.isBandOn ?? true)
 
     await $.command.register({
       name: 'checklist',
@@ -390,23 +419,18 @@ export const register: Register = on => {
     return { result: summary }
   })
 
-  on('command.run', { command: 'checklist' }, async $ => {
-    await ensureChat($)
+  on('command.run', { command: 'checklist' }, async ($, e) => {
+    if (e.args.trim() === 'band') {
+      await ensureChat($)
+      await update($, isBandOn, isOn => !isOn)
+      await savePrefs($)
 
-    if (await read($, isDismissed)) {
-      await update($, isDismissed, () => false)
-      await save($)
       const L = await read($, labels)
-      await $.ui.open({ id: PANE, title: L.title })
 
-      return { text: L.opened }
+      return { text: (await read($, isBandOn)) ? L.bandOn : L.bandOff }
     }
 
-    await update($, isDismissed, () => true)
-    await save($)
-    await $.ui.close({ id: PANE })
-
-    return { text: (await read($, labels)).closed }
+    return { text: await togglePanel($) }
   })
 
   on('ui.close', async ($, e, next) => {
@@ -418,6 +442,52 @@ export const register: Register = on => {
     return next(e)
   })
 
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const list = await read($, items)
+    const asks = await read($, attention)
+
+    if (e.props.hasSurvey || !(await read($, isBandOn)) || list.length + asks.length === 0) {
+      return next(e)
+    }
+
+    const { Box, Button, Text } = $.ui.resolve(e)
+    const L = await read($, labels)
+    const open = asks.filter(one => !one.isResolved)
+    const done = list.filter(one => one.status === 'done').length
+    const current = list.find(one => one.status === 'doing') ?? list.find(one => one.status === 'todo')
+    const label = current === undefined ? undefined : current.text.length > 60 ? current.text.slice(0, 59) + '…' : current.text
+
+    return (
+      <Box flexDirection="row" gap={1}>
+        {label !== undefined && (
+          <Text bold color="cyan">
+            ▶ {label}
+          </Text>
+        )}
+        {label === undefined && list.length > 0 && <Text color="green">✓</Text>}
+        {list.length > 0 && (
+          <Text dimColor>
+            · {done}/{list.length}
+          </Text>
+        )}
+        {open.length > 0 && (
+          <Text bold color="yellow">
+            · ⚠ {L.pending.toLowerCase()}: {open.length}
+          </Text>
+        )}
+        <Button
+          key="panel"
+          plain
+          dimColor
+          label="⧉"
+          onPress={async () => {
+            await togglePanel($)
+          }}
+        />
+      </Box>
+    )
+  })
+
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Button, Text } = $.ui.resolve(e)
     const L = await read($, labels)
@@ -427,6 +497,7 @@ export const register: Register = on => {
     const alertOn = await read($, isAlertOn)
     const showDecisions = await read($, isShowingDecisions)
     const showResolved = await read($, isShowingResolved)
+    const bandIsOn = await read($, isBandOn)
     const open = asks.filter(one => !one.isResolved)
     const resolved = asks.filter(one => one.isResolved)
     const done = list.filter(one => one.status === 'done').length
@@ -545,7 +616,10 @@ export const register: Register = on => {
           </Box>
         )}
 
-        <Box flexDirection="row" gap={2}>
+        <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
+          <Text bold dimColor>
+            {L.settings}
+          </Text>
           <Button
             key="alert"
             plain
@@ -563,6 +637,16 @@ export const register: Register = on => {
             label={showDecisions ? L.decisionsShown : L.decisionsHidden}
             onPress={async () => {
               await update($, isShowingDecisions, isOn => !isOn)
+              await savePrefs($)
+            }}
+          />
+          <Button
+            key="band"
+            plain
+            dimColor
+            label={bandIsOn ? L.bandButtonOn : L.bandButtonOff}
+            onPress={async () => {
+              await update($, isBandOn, isOn => !isOn)
               await savePrefs($)
             }}
           />

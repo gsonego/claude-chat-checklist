@@ -21,6 +21,11 @@ export type Labels = {
   newPending: string
   opened: string
   closed: string
+  bandOn: string
+  bandOff: string
+  settings: string
+  bandButtonOn: string
+  bandButtonOff: string
 }
 
 /** What is kept on disk for one chat, under `chat:<session id>`. */
@@ -34,7 +39,7 @@ export type ChatSnapshot = {
 }
 
 /** What is kept on disk for the person, under `prefs`: shared by every chat. */
-export type Prefs = { isAlertOn: boolean; isShowingDecisions: boolean }
+export type Prefs = { isAlertOn: boolean; isShowingDecisions: boolean; isBandOn?: boolean }
 
 declare module 'claude-code' {
   interface PluginState {
@@ -47,6 +52,7 @@ declare module 'claude-code' {
       isAlertOn: boolean
       isShowingDecisions: boolean
       isShowingResolved: boolean
+      isBandOn: boolean
       labels: Labels
     }
   }
