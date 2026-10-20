@@ -1,6 +1,6 @@
 {
   "name": "chat-checklist",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Per-chat side panel: a checklist of what is being done, pending items that need you, and decisions made.",
   "author": { "name": "gsonego" },
   "license": "MIT",

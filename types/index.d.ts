@@ -10,22 +10,22 @@ export type Labels = {
   pending: string
   noPending: string
   resolved: string
+  done: string
+  older: string
+  none: string
   checklist: string
   empty: string
   decisions: string
   noDecisions: string
-  alertsOn: string
-  alertsOff: string
-  decisionsShown: string
-  decisionsHidden: string
+  alerts: string
+  showDecisions: string
   newPending: string
   opened: string
   closed: string
   bandOn: string
   bandOff: string
   settings: string
-  bandButtonOn: string
-  bandButtonOff: string
+  band: string
 }
 
 /** What is kept on disk for one chat, under `chat:<session id>`. */
@@ -52,6 +52,8 @@ declare module 'claude-code' {
       isAlertOn: boolean
       isShowingDecisions: boolean
       isShowingResolved: boolean
+      isShowingDone: boolean
+      isShowingOlder: boolean
       isBandOn: boolean
       labels: Labels
     }

@@ -22,22 +22,22 @@ const DEFAULT_LABELS: Labels = {
   pending: 'PENDING',
   noPending: 'No open items.',
   resolved: '{n} resolved',
+  done: '{n} done',
+  older: '{n} earlier',
+  none: 'none',
   checklist: 'CHECKLIST',
   empty: 'Nothing here yet.',
   decisions: 'DECISIONS',
   noDecisions: 'None recorded.',
-  alertsOn: 'Alerts: on',
-  alertsOff: 'Alerts: off',
-  decisionsShown: 'Decisions: shown',
-  decisionsHidden: 'Decisions: hidden',
+  alerts: 'Alerts',
+  showDecisions: 'Decisions',
   newPending: 'New pending item: {text}',
   opened: 'Panel opened.',
   closed: 'Panel closed.',
   bandOn: 'Band shown.',
   bandOff: 'Band hidden.',
   settings: 'SETTINGS',
-  bandButtonOn: 'Band: on',
-  bandButtonOff: 'Band: off',
+  band: 'Band',
 }
 
 const LABEL_KEYS = Object.keys(DEFAULT_LABELS) as (keyof Labels)[]
@@ -54,6 +54,8 @@ const isShowingResolved = atom(
   { plugin: 'chat-checklist', key: 'isShowingResolved' } as const,
   false,
 )
+const isShowingDone = atom({ plugin: 'chat-checklist', key: 'isShowingDone' } as const, false)
+const isShowingOlder = atom({ plugin: 'chat-checklist', key: 'isShowingOlder' } as const, false)
 const isShowingDecisions = atom(
   { plugin: 'chat-checklist', key: 'isShowingDecisions' } as const,
   false,
@@ -508,26 +510,48 @@ export const register: Register = on => {
     const alertOn = await read($, isAlertOn)
     const showDecisions = await read($, isShowingDecisions)
     const showResolved = await read($, isShowingResolved)
+    const showDone = await read($, isShowingDone)
+    const showOlder = await read($, isShowingOlder)
     const bandIsOn = await read($, isBandOn)
     const open = asks.filter(one => !one.isResolved)
     const resolved = asks.filter(one => one.isResolved)
     const done = list.filter(one => one.status === 'done').length
-    const BAR = 12
+    const BAR = 14
     const filled = list.length === 0 ? 0 : Math.round((done / list.length) * BAR)
+    const percent = list.length === 0 ? 0 : Math.round((done / list.length) * 100)
+    const todo = list.filter(one => one.status !== 'done')
+    const shownSteps = showDone ? list : todo
+    const newest = [...log].reverse()
+    const shownDecisions = showOlder ? newest : newest.slice(0, 3)
+    const olderCount = newest.length - 3
 
     return (
       <Box flexDirection="column" gap={1} padding={1}>
         {asks.length > 0 && (
-          <Box
-            flexDirection="column"
-            borderStyle="round"
-            borderColor={open.length > 0 ? 'yellow' : undefined}
-            paddingX={1}
-          >
-            <Text bold color={open.length > 0 ? 'yellow' : undefined} dimColor={open.length === 0}>
-              {open.length > 0 ? '⚠ ' : ''}{L.pending} · {open.length}
-            </Text>
-            {open.length === 0 && <Text dimColor>{L.noPending}</Text>}
+          <Box flexDirection="column" borderStyle="round" borderDimColor={open.length === 0} paddingX={1}>
+            <Box flexDirection="row" justifyContent="space-between">
+              {open.length > 0 ? (
+                <Text bold color="yellow">
+                  {L.pending} · {open.length}
+                </Text>
+              ) : (
+                <Text>
+                  <Text bold dimColor>
+                    {L.pending}
+                  </Text>
+                  <Text color="green"> ✓ {L.none}</Text>
+                </Text>
+              )}
+              {resolved.length > 0 && (
+                <Button
+                  key="resolved"
+                  plain
+                  dimColor
+                  label={`${showResolved ? '▾' : '▸'} ${L.resolved.replace('{n}', String(resolved.length))}`}
+                  onPress={() => update($, isShowingResolved, isOn => !isOn)}
+                />
+              )}
+            </Box>
             {open.map(one => (
               <Box flexDirection="row" gap={1}>
                 <Text bold color="yellow">
@@ -550,28 +574,17 @@ export const register: Register = on => {
                 />
               </Box>
             ))}
-            {resolved.length > 0 && (
-              <Box flexDirection="column">
-                <Button
-                  key="resolved"
-                  plain
-                  dimColor
-                  label={`${showResolved ? '▾' : '▸'} ${L.resolved.replace('{n}', String(resolved.length))}`}
-                  onPress={() => update($, isShowingResolved, isOn => !isOn)}
-                />
-                {showResolved &&
-                  resolved.map(one => (
-                    <Box flexDirection="row" gap={1}>
-                      <Text color="green" dimColor>
-                        ✓
-                      </Text>
-                      <Box flexShrink={1}>
-                        <Text dimColor>{one.text}</Text>
-                      </Box>
-                    </Box>
-                  ))}
-              </Box>
-            )}
+            {showResolved &&
+              resolved.map(one => (
+                <Box flexDirection="row" gap={1}>
+                  <Text color="green" dimColor>
+                    ✓
+                  </Text>
+                  <Box flexShrink={1}>
+                    <Text dimColor>{one.text}</Text>
+                  </Box>
+                </Box>
+              ))}
           </Box>
         )}
 
@@ -579,14 +592,19 @@ export const register: Register = on => {
           <Box flexDirection="row" justifyContent="space-between">
             <Text bold>{L.checklist}</Text>
             {list.length > 0 && (
-              <Text>
-                <Text color="green">{'█'.repeat(filled)}</Text>
-                <Text color="gray">{'█'.repeat(BAR - filled)}</Text> {done}/{list.length}
+              <Text dimColor>
+                {done}/{list.length} · {percent}%
               </Text>
             )}
           </Box>
+          {list.length > 0 && (
+            <Text>
+              <Text color="green">{'█'.repeat(filled)}</Text>
+              <Text color="gray">{'█'.repeat(BAR - filled)}</Text>
+            </Text>
+          )}
           {list.length === 0 && <Text dimColor>{L.empty}</Text>}
-          {list.map(one => (
+          {shownSteps.map(one => (
             <Box flexDirection="row" gap={1}>
               <Text
                 bold={one.status !== 'todo'}
@@ -608,6 +626,15 @@ export const register: Register = on => {
               </Box>
             </Box>
           ))}
+          {done > 0 && (
+            <Button
+              key="done"
+              plain
+              dimColor
+              label={`${showDone ? '▾' : '▸'} ${L.done.replace('{n}', String(done))}`}
+              onPress={() => update($, isShowingDone, isOn => !isOn)}
+            />
+          )}
         </Box>
 
         {showDecisions && (
@@ -616,14 +643,23 @@ export const register: Register = on => {
               {L.decisions} · {log.length}
             </Text>
             {log.length === 0 && <Text dimColor>{L.noDecisions}</Text>}
-            {log.map(one => (
+            {shownDecisions.map(one => (
               <Box flexDirection="row" gap={1}>
                 <Text dimColor>•</Text>
                 <Box flexShrink={1}>
-                  <Text>{one.text}</Text>
+                  <Text dimColor>{one.text}</Text>
                 </Box>
               </Box>
             ))}
+            {olderCount > 0 && (
+              <Button
+                key="older"
+                plain
+                dimColor
+                label={`${showOlder ? '▾' : '▸'} ${L.older.replace('{n}', String(olderCount))}`}
+                onPress={() => update($, isShowingOlder, isOn => !isOn)}
+              />
+            )}
           </Box>
         )}
 
@@ -631,36 +667,38 @@ export const register: Register = on => {
           <Text bold dimColor>
             {L.settings}
           </Text>
-          <Button
-            key="alert"
-            plain
-            dimColor
-            label={alertOn ? '🔔 ' + L.alertsOn : '🔕 ' + L.alertsOff}
-            onPress={async () => {
-              await update($, isAlertOn, isOn => !isOn)
-              await savePrefs($)
-            }}
-          />
-          <Button
-            key="decisions"
-            plain
-            dimColor
-            label={showDecisions ? L.decisionsShown : L.decisionsHidden}
-            onPress={async () => {
-              await update($, isShowingDecisions, isOn => !isOn)
-              await savePrefs($)
-            }}
-          />
-          <Button
-            key="band"
-            plain
-            dimColor
-            label={bandIsOn ? L.bandButtonOn : L.bandButtonOff}
-            onPress={async () => {
-              await update($, isBandOn, isOn => !isOn)
-              await savePrefs($)
-            }}
-          />
+          <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
+            <Button
+              key="alert"
+              plain
+              dimColor
+              label={(alertOn ? '☑ ' : '☐ ') + L.alerts}
+              onPress={async () => {
+                await update($, isAlertOn, isOn => !isOn)
+                await savePrefs($)
+              }}
+            />
+            <Button
+              key="decisions"
+              plain
+              dimColor
+              label={(showDecisions ? '☑ ' : '☐ ') + L.showDecisions}
+              onPress={async () => {
+                await update($, isShowingDecisions, isOn => !isOn)
+                await savePrefs($)
+              }}
+            />
+            <Button
+              key="band"
+              plain
+              dimColor
+              label={(bandIsOn ? '☑ ' : '☐ ') + L.band}
+              onPress={async () => {
+                await update($, isBandOn, isOn => !isOn)
+                await savePrefs($)
+              }}
+            />
+          </Box>
         </Box>
       </Box>
     )
