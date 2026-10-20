@@ -38,6 +38,19 @@ claude plugin install chat-checklist --marketplace gsonego/claude-chat-checklist
 
 In the desktop app, where `/plugin` does not run: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `gsonego/claude-chat-checklist`, then **Add plugin**.
 
+## Update
+
+From a shell, refresh the marketplace and update the plugin:
+
+```
+claude plugin marketplace update chat-checklist
+claude plugin update chat-checklist@chat-checklist
+```
+
+Then run `/reload-plugins` in the open session; new sessions load the update by themselves. In the terminal you can also use `/plugin`, press Tab to **Installed**, select the plugin and choose **Update now**.
+
+Third-party marketplaces do not update by themselves. To turn that on, use `/plugin`, then **Marketplaces**, select the marketplace and choose **Enable auto-update**.
+
 ## Usage
 
 - The panel opens by itself when the first item appears in a chat.
