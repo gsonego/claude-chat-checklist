@@ -1,0 +1,12 @@
+{
+  "name": "chat-checklist",
+  "description": "Mods do Claude Code de gsonego.",
+  "owner": { "name": "gsonego" },
+  "plugins": [
+    {
+      "name": "chat-checklist",
+      "source": "./",
+      "description": "Painel lateral por chat: checklist, pendências e decisões."
+    }
+  ]
+}

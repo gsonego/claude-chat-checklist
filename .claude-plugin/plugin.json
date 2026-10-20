@@ -1,0 +1,9 @@
+{
+  "name": "chat-checklist",
+  "version": "0.1.0",
+  "description": "Painel lateral por chat: checklist do que está sendo feito, pendências que precisam de você e decisões tomadas.",
+  "author": { "name": "gsonego" },
+  "license": "MIT",
+  "repository": "https://github.com/gsonego/claude-chat-checklist",
+  "types": "./types/index.d.ts"
+}
